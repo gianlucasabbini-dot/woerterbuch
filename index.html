@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Wörterbuch</title>
+  <meta name="description" content="Dizionario tedesco-italiano: traduzioni, significati, esempi e combinazioni di parole.">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Wörterbuch">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <form id="search" role="search" autocomplete="off">
+      <button type="button" id="dir" class="dir" aria-label="Cambia direzione">DE → IT</button>
+      <input id="q" type="search" placeholder="Cerca una parola…" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Parola da cercare">
+      <button type="button" id="clear" class="icon" aria-label="Cancella" hidden>
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </form>
+    <div id="umlauts" class="umlauts" aria-label="Lettere tedesche">
+      <button type="button">ä</button><button type="button">ö</button><button type="button">ü</button><button type="button">ß</button>
+    </div>
+    <ul id="suggest" class="suggest" hidden></ul>
+  </header>
+
+  <main>
+    <section id="quick" class="quick" hidden aria-live="polite"></section>
+    <section id="results" aria-live="polite"></section>
+    <section id="home"></section>
+  </main>
+</body>
+</html>
