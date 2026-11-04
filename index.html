@@ -32,10 +32,18 @@
     <ul id="suggest" class="suggest" hidden></ul>
   </header>
 
-  <main>
+  <main id="main">
     <section id="quick" class="quick" hidden aria-live="polite"></section>
     <section id="results" aria-live="polite"></section>
     <section id="home"></section>
   </main>
+  <section id="learn" class="learn" hidden></section>
+
+  <nav class="tabs" aria-label="Sezioni">
+    <button data-tab="search" class="on">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Cerca</button>
+    <button data-tab="learn">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M8 10h8M8 14h5"/></svg>Impara<span id="badge" class="badge" hidden></span></button>
+  </nav>
 </body>
 </html>

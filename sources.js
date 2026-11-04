@@ -90,3 +90,25 @@ export async function quickTranslate(text, pair, signal) {
   if (data.responseStatus !== 200 && data.responseStatus !== '200') throw new Error(data.responseDetails || 'quota');
   return data.responseData.translatedText;
 }
+
+// Commons audio file names → playable URL (MP3 derivative when the browser can't play Ogg, e.g. older iOS).
+export async function audioUrls(files, signal) {
+  if (!files.length) return new Map();
+  const u = new URL('https://commons.wikimedia.org/w/api.php');
+  const params = { action: 'query', prop: 'videoinfo', viprop: 'url|derivatives', format: 'json', formatversion: 2, origin: '*',
+    titles: [...new Set(files)].map(f => 'File:' + f).join('|') };
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  const data = await getJSON(u, signal);
+  const alias = new Map((data.query?.normalized || []).map(n => [n.to, n.from]));
+  const probe = document.createElement('audio');
+  const out = new Map();
+  for (const p of data.query?.pages || []) {
+    const info = p.videoinfo?.[0];
+    if (!info) continue;
+    const options = [...(info.derivatives || []), { src: info.url, type: info.mime || '' }];
+    const pick = options.find(o => o.type.startsWith('audio/mpeg') && probe.canPlayType('audio/mpeg'))
+      || options.find(o => o.type && probe.canPlayType(o.type));
+    if (pick) out.set((alias.get(p.title) || p.title).replace(/^File:/, ''), pick.src);
+  }
+  return out;
+}

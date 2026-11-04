@@ -1,9 +1,12 @@
-import { lookupGerman, lookupItalian, suggest, quickTranslate } from './sources.js';
+import { lookupGerman, lookupItalian, suggest, quickTranslate, audioUrls } from './sources.js';
+import { say } from './audio.js';
+import { initLearn, renderLearn, addCard, cardId, isSaved, dueCount } from './learn.js';
 import { clean, forMeaning } from './wikitext.js';
 
 const $ = id => document.getElementById(id);
 const els = { form: $('search'), q: $('q'), dir: $('dir'), clear: $('clear'), umlauts: $('umlauts'),
-  suggest: $('suggest'), quick: $('quick'), results: $('results'), home: $('home') };
+  suggest: $('suggest'), quick: $('quick'), results: $('results'), home: $('home'),
+  bar: document.querySelector('.bar'), main: $('main'), learn: $('learn'), badge: $('badge') };
 
 const ICON = {
   speak: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg>',
@@ -37,9 +40,13 @@ function meta(e) {
   return parts.join(' · ');
 }
 
+const learnBtn = (e, ref, i) => isSaved(cardId(e, ref))
+  ? `<button class="learn-btn on" disabled>✓ In studio</button>`
+  : `<button class="learn-btn" data-learn="${i}|${esc(ref)}">＋ Impara</button>`;
+
 const list = (items, cls) => items.length ? `<ul class="${cls}">${items.map(x => `<li>${x.text}</li>`).join('')}</ul>` : '';
 
-function meaning(e, m) {
+function meaning(e, m, i) {
   const ref = m.refs[0] || '1';
   const it = forMeaning(e.it, ref).flatMap(t => t.words);
   const ex = forMeaning(e.examples, ref).slice(0, 4);
@@ -47,13 +54,14 @@ function meaning(e, m) {
   return `<li><span class="num">${esc(ref)}</span><div>
       <p class="def">${m.text}</p>
       ${it.length ? `<p class="it">${it.join(', ')}</p>` : ''}
+      ${learnBtn(e, ref, i)}
     </div>
     ${col.length ? `<div class="sub"><h4>Combinazioni tipiche</h4>${col.map(c => `<p class="colloc">${c.text}</p>`).join('')}</div>` : ''}
     ${ex.length ? `<div class="sub"><h4>Esempi · tocca per tradurre</h4>${list(ex, 'ex')}</div>` : ''}
   </li>`;
 }
 
-function card(e) {
+function card(e, i) {
   const label = `${e.article ? e.article + ' ' : ''}${e.title}`;
   const isFav = favs.some(f => f.q === e.title);
   const allIt = [...new Set(e.it.flatMap(t => t.words.map(w => strip(w).replace(/\s+[mfn]$/, ''))))];
@@ -66,12 +74,12 @@ function card(e) {
     ${e.from ? `<p class="from">${esc(e.from)} → forma base</p>` : ''}
     <header>
       <div class="lemma">${e.article ? `<span class="art art-${e.article}">${e.article}</span>` : ''}${esc(e.title)}</div>
-      <button class="icon" data-say="${esc(label)}" aria-label="Ascolta">${ICON.speak}</button>
+      <button class="icon" data-say="${esc(label)}" data-file="${esc(e.audio)}" aria-label="Ascolta">${ICON.speak}</button>
       <button class="icon${isFav ? ' on' : ''}" data-fav="${esc(e.title)}" data-label="${esc(label)}" aria-label="Preferito">${ICON.star}</button>
     </header>
     <p class="meta">${meta(e)}</p>
     ${allIt.length ? `<p class="summary">${esc(allIt.slice(0, 6).join(', '))}</p>` : ''}
-    <ol class="meanings">${meanings.map(m => meaning(e, m)).join('')}</ol>
+    <ol class="meanings">${meanings.map(m => meaning(e, m, i)).join('')}</ol>
     ${extra}
     <nav class="links">
       <a href="https://www.duden.de/suchen/dudenonline/${t}" target="_blank" rel="noopener">Duden</a>
@@ -104,7 +112,13 @@ function setDir(d) {
 }
 
 // ---------- search ----------
-let ctrl, suggestCtrl, timer, suggestTimer;
+let ctrl, suggestCtrl, timer, suggestTimer, shown = [];
+const audio = new Map(); // Commons file name → playable URL
+
+async function loadAudio(entries, signal) {
+  const files = [...new Set(entries.map(e => e.audio).filter(f => f && !audio.has(f)))];
+  try { for (const [k, v] of await audioUrls(files, signal)) audio.set(k, v); } catch { /* falls back to the device voice */ }
+}
 
 async function run(word, { submit = false } = {}) {
   word = word.trim();
@@ -123,7 +137,9 @@ async function run(word, { submit = false } = {}) {
     const entries = await (dir === 'de' ? lookupGerman(word, signal) : lookupItalian(word, signal));
     if (signal.aborted) return;
     if (entries.length) {
+      shown = entries;
       els.results.innerHTML = entries.map(card).join('');
+      loadAudio(entries, signal);
       remember(word);
     } else {
       const w = encodeURIComponent(word);
@@ -182,10 +198,17 @@ els.umlauts.addEventListener('click', e => {
 els.q.addEventListener('blur', () => setTimeout(hideSuggest, 300));
 
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-go],[data-q],[data-say],[data-fav],.ex li');
+  if (e.target.closest('#learn')) return;
+  const t = e.target.closest('[data-go],[data-q],[data-say],[data-fav],[data-learn],[data-tab],.ex li');
   if (!t) return;
   if (t.dataset.go || t.dataset.q) { if (dir !== 'de' && t.dataset.q) setDir('de'); return go(t.dataset.go || t.dataset.q); }
-  if (t.dataset.say) return speak(t.dataset.say);
+  if (t.dataset.say) return say(t.dataset.say, audio.get(t.dataset.file));
+  if (t.dataset.tab) return setTab(t.dataset.tab);
+  if (t.dataset.learn) {
+    const [i, ref] = t.dataset.learn.split('|');
+    t.outerHTML = '<button class="learn-btn on" disabled>✓ In studio</button>';
+    return addCard(shown[+i], ref);
+  }
   if (t.dataset.fav) {
     const q = t.dataset.fav, on = favs.some(f => f.q === q);
     favs = on ? favs.filter(f => f.q !== q) : [{ q, label: t.dataset.label }, ...favs];
@@ -199,19 +222,27 @@ document.addEventListener('click', async e => {
   }
 });
 
-function speak(text) {
-  if (!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'de-DE'; u.rate = 0.9;
-  const voice = speechSynthesis.getVoices().find(v => v.lang.startsWith('de'));
-  if (voice) u.voice = voice;
-  speechSynthesis.speak(u);
+function setTab(tab) {
+  const learning = tab === 'learn';
+  els.bar.hidden = els.main.hidden = learning;
+  els.learn.hidden = !learning;
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (learning) renderLearn();
+  window.scrollTo({ top: 0 });
+}
+
+function updateBadge() {
+  const n = dueCount();
+  els.badge.textContent = n || '';
+  els.badge.hidden = !n;
 }
 
 // ---------- boot ----------
 setDir(dir);
 renderHome();
+initLearn(els.learn, updateBadge);
+updateBadge();
+setInterval(updateBadge, 60e3);
 const shared = new URLSearchParams(location.search).get('q');
 if (shared) go(shared);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

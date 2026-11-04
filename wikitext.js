@@ -170,13 +170,16 @@ export function parseEntry(title, wikitext) {
     if (!meanings.length) continue;
     const f = forms(body);
     const genus = f.genus || (header.match(/\{\{([mfn])\}\}/) || [])[1] || '';
-    const ipa = ((b.Aussprache || []).join('\n').match(/\{\{Lautschrift\|([^}|]+)/) || [])[1] || '';
+    const pron = (b.Aussprache || []).join('\n');
+    const ipa = (pron.match(/\{\{Lautschrift\|([^}|]+)/) || [])[1] || '';
+    const audio = (pron.match(/\{\{Audio\|([^}|]+\.(?:ogg|oga|mp3|wav|flac|opus))/i) || [])[1]?.trim() || '';
     entries.push({
       title,
       pos: pos.map(p => POS_IT[p] || p),
       article: ARTICLE[genus] || '',
       genus,
       ipa,
+      audio,
       forms: f,
       meanings,
       examples: items(b.Beispiele),

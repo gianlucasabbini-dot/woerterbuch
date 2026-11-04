@@ -57,6 +57,7 @@ const e = entries[0];
 assert.deepEqual(e.pos, ['sostantivo']);
 assert.equal(e.article, 'die');
 assert.equal(e.ipa, 'ɛntˈʃaɪ̯dʊŋ');
+assert.equal(e.audio, 'De-Entscheidung.ogg');
 assert.equal(e.forms.plural, 'Entscheidungen');
 assert.equal(e.meanings.length, 2);
 assert.match(e.meanings[1].text, /<span class="lbl">Rechtswesen:<\/span>/);
