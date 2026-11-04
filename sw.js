@@ -1,6 +1,6 @@
 // App shell: cache-first. Dictionary/translation requests: stale-while-revalidate,
 // so words already looked up open instantly and also work offline.
-const SHELL = 'shell-v1', DATA = 'data-v1';
+const SHELL = 'shell-v2', DATA = 'data-v1';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'sources.js', 'wikitext.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const DATA_HOSTS = ['de.wiktionary.org', 'api.mymemory.translated.net'];

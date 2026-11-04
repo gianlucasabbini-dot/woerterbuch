@@ -111,7 +111,7 @@ async function run(word, { submit = false } = {}) {
   if (!word) return;
   ctrl?.abort(); ctrl = new AbortController();
   const { signal } = ctrl;
-  hideSuggest();
+  if (submit) hideSuggest(); // live search keeps the suggestions open
   els.home.hidden = true;
   els.results.innerHTML = '<div class="skeleton"></div>';
 
@@ -171,7 +171,7 @@ els.q.addEventListener('input', () => {
 els.form.addEventListener('submit', e => { e.preventDefault(); clearTimeout(timer); go(els.q.value); });
 els.clear.addEventListener('click', () => { els.q.value = ''; els.q.dispatchEvent(new Event('input')); els.q.focus(); });
 els.dir.addEventListener('click', () => { setDir(dir === 'de' ? 'it' : 'de'); if (els.q.value.trim()) run(els.q.value); els.q.focus(); });
-els.umlauts.addEventListener('mousedown', e => e.preventDefault()); // keep keyboard open
+for (const el of [els.umlauts, els.suggest]) el.addEventListener('mousedown', e => e.preventDefault()); // keep focus/keyboard
 els.umlauts.addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
   const { selectionStart: s, selectionEnd: t, value: v } = els.q;
@@ -179,7 +179,7 @@ els.umlauts.addEventListener('click', e => {
   els.q.setSelectionRange((s ?? v.length) + 1, (s ?? v.length) + 1);
   els.q.dispatchEvent(new Event('input'));
 });
-els.q.addEventListener('blur', () => setTimeout(hideSuggest, 150));
+els.q.addEventListener('blur', () => setTimeout(hideSuggest, 300));
 
 document.addEventListener('click', async e => {
   const t = e.target.closest('[data-go],[data-q],[data-say],[data-fav],.ex li');
